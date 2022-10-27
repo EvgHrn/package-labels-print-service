@@ -3,10 +3,20 @@ import parse from 'html-react-parser';
 import ReactToPrint from 'react-to-print';
 import logo from './logo.svg';
 import './App.css';
-
 import { io } from "socket.io-client";
 
-const socket = io("https://timesheets.space:3334");
+require('dotenv').config();
+
+if(!process.env.SERVERS) {
+  console.error(`${new Date().toLocaleString('ru')} No servers list`);
+}
+
+// @ts-ignore
+const servers: string[] =  process.env.SERVERS.split(',');
+
+const sockets = servers.map((serverStr: string) => io(serverStr));
+
+// const socket = io("https://timesheets.space:3334");
 
 // socket.onAny((eventName, ...args) => {
 //   console.log(`Socket event ${eventName} with args ${args}`);
@@ -21,33 +31,42 @@ function App() {
   const buttonRef = useRef(null);
 
   useEffect(() => {
-    socket.on("connect", () => {
-      console.log(`Socket connected with id ${socket.id}`);
-    });
 
-    socket.on("disconnect", () => {
-      console.log(`Socket disconnected with id ${socket.id}`);
-    });
+    for(let i = 0; i < servers.length; i++) {
+      const socket = sockets[i];
+      socket.on("connect", () => {
+        console.log(`Socket ${socket.id} connected`);
+      });
 
-    socket.on("hello", (...args: any[]) => {
-      console.log(`Socket hello event with args ${args}`);
-    });
+      socket.on("disconnect", () => {
+        console.log(`Socket ${socket.id} disconnected`);
+      });
 
-    socket.on("print", (...args: any[]) => {
-      console.log(`Socket print event with args ${args}`);
-      const str = args[0];
-      const div = document.createElement('div');
-      div.innerHTML = str.trim();
-      setDiv(str);
-      // @ts-ignore
-      buttonRef.current.click();
-    });
+      socket.on("hello", (...args: any[]) => {
+        console.log(`Socket ${socket.id} hello event with args ${args}`);
+      });
+
+      socket.on("print", (...args: any[]) => {
+        console.log(`Socket ${socket.id} print event with args ${args}`);
+        const str = args[0];
+        const div = document.createElement('div');
+        div.innerHTML = str.trim();
+        setDiv(str);
+        setTimeout(() => {
+          // @ts-ignore
+          buttonRef.current.click();
+        }, 1000);
+      });
+    }
 
     return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('hello');
-      socket.off('print');
+      for(let i = 0; i < servers.length; i++) {
+        const socket = sockets[i];
+        socket.off('connect');
+        socket.off('disconnect');
+        socket.off('hello');
+        socket.off('print');
+      }
     }
   }, []);
 
