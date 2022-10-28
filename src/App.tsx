@@ -5,14 +5,12 @@ import logo from './logo.svg';
 import './App.css';
 import { io } from "socket.io-client";
 
-require('dotenv').config();
-
-if(!process.env.SERVERS) {
+if(!process.env.REACT_APP_SERVERS) {
   console.error(`${new Date().toLocaleString('ru')} No servers list`);
 }
 
 // @ts-ignore
-const servers: string[] =  process.env.SERVERS.split(',');
+const servers: string[] =  process.env.REACT_APP_SERVERS.split(',');
 
 const sockets = servers.map((serverStr: string) => io(serverStr));
 
