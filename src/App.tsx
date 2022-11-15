@@ -63,51 +63,50 @@ function App() {
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
-
-    for(let i = 0; i < servers.length; i++) {
-      const socket = sockets[i];
-      socket.on("connect", () => {
-        console.log(`Socket ${socket.id} connected`);
-      });
-
-      socket.on("disconnect", () => {
-        console.log(`Socket ${socket.id} disconnected`);
-      });
-
-      socket.on("hello", (...args: any[]) => {
-        console.log(`Socket ${socket.id} hello event with args ${args}`);
-      });
-
-      socket.on("print", (...args: any[]) => {
-        console.log(`${new Date().toLocaleString('ru')} Socket ${socket.id} print event with args ${args}`);
-        if(args.length > 1) {
-          //new version
-          //check printer
-          if((args[1] !== (printerLocation as string)) || (args[2] !== (printerDepartment as string))) {
-            console.log(`its not our printer`);
-            return;
-          }
-        }
-        const str = args[0];
-        const div = document.createElement('div');
-        div.innerHTML = str.trim();
-        setDiv(str);
-        setTimeout(() => {
-          // @ts-ignore
-          buttonRef.current.click();
-        }, 1000);
-      });
-    }
-
-    return () => {
+    (async() => {
       for(let i = 0; i < servers.length; i++) {
         const socket = sockets[i];
-        socket.off('connect');
-        socket.off('disconnect');
-        socket.off('hello');
-        socket.off('print');
+        socket.on("connect", () => {
+          console.log(`Socket ${socket.id} connected`);
+        });
+
+        socket.on("disconnect", () => {
+          console.log(`Socket ${socket.id} disconnected`);
+        });
+
+        socket.on("hello", (...args: any[]) => {
+          console.log(`Socket ${socket.id} hello event with args ${args}`);
+        });
+
+        socket.on("print", async(...args: any[]) => {
+          console.log(`${new Date().toLocaleString('ru')} Socket ${socket.id} print event with args ${args}`);
+          if(args.length > 1) {
+            //new version
+            //check printer
+            const isPrint = await checkIsPrint(args[1], args[2]);
+            if(!isPrint) return;
+          }
+          const str = args[0];
+          const div = document.createElement('div');
+          div.innerHTML = str.trim();
+          setDiv(str);
+          setTimeout(() => {
+            // @ts-ignore
+            buttonRef.current.click();
+          }, 1000);
+        });
       }
-    }
+
+      return () => {
+        for(let i = 0; i < servers.length; i++) {
+          const socket = sockets[i];
+          socket.off('connect');
+          socket.off('disconnect');
+          socket.off('hello');
+          socket.off('print');
+        }
+      }
+    })()
   }, []);
 
   useEffect(() => {
@@ -136,6 +135,33 @@ function App() {
   useEffect(() => {
     console.log(`${new Date().toLocaleString('ru')} New div in state`);
   }, [div]);
+
+  useEffect(() => {
+    console.log(`${new Date().toLocaleString('ru')} New printerDepartment in state: `, printerDepartment);
+  }, [printerDepartment]);
+
+  useEffect(() => {
+    console.log(`${new Date().toLocaleString('ru')} New printerLocation in state: `, printerLocation);
+  }, [printerLocation]);
+
+  const checkIsPrint = async(requestLocation: string, requestDepartment: string): Promise<boolean> => {
+    const localPrinter: {location: string, department: string} | null = await getLabelPrinter();
+    if(!localPrinter) {
+      enqueueSnackbar(`Ошибка получения принтера из локального хранилища`,{
+        variant: 'error',
+      });
+      return false;
+    }
+    console.log(`Socket request location: `, requestLocation);
+    console.log(`Local location: `, localPrinter.location);
+    console.log(`Socket request department: `, requestDepartment);
+    console.log(`Local department: `, localPrinter.department);
+    if((requestLocation !== localPrinter.location ) || (requestDepartment !== localPrinter.department )) {
+      console.log(`its not our printer`);
+      return false;
+    }
+    return true;
+  };
 
   const handlePrinterLocationChange = (event: SelectChangeEvent<string>) => {
     setLabelPrinter(event.target.value, printerDepartment);
