@@ -1,10 +1,9 @@
 import React, {useEffect, useRef, useState} from 'react';
 import parse from 'html-react-parser';
 import ReactToPrint from 'react-to-print';
-import logo from './logo.svg';
 import './App.css';
 import { io } from "socket.io-client";
-import {FormControl, InputLabel, MenuItem, Select, SelectChangeEvent} from "@mui/material";
+import {FormControl, MenuItem, Select, SelectChangeEvent} from "@mui/material";
 import {labelPrinterLocationsList, LabelPrinterLocationType} from "./types/LabelPrinterLocationType";
 import localForage from 'localforage';
 // @ts-ignore
@@ -67,15 +66,19 @@ function App() {
       for(let i = 0; i < servers.length; i++) {
         const socket = sockets[i];
         socket.on("connect", () => {
-          console.log(`Socket ${socket.id} connected`);
+          console.log(`${new Date().toLocaleString('ru')} Socket ${socket.id} connected`);
         });
 
         socket.on("disconnect", () => {
-          console.log(`Socket ${socket.id} disconnected`);
+          console.error(`${new Date().toLocaleString('ru')} Socket ${socket.id} disconnected`);
+        });
+
+        socket.on("connect_error", () => {
+          console.error(`${new Date().toLocaleString('ru')} Socket ${socket.id} connect_error`);
         });
 
         socket.on("hello", (...args: any[]) => {
-          console.log(`Socket ${socket.id} hello event with args ${args}`);
+          console.log(`${new Date().toLocaleString('ru')} Socket ${socket.id} hello event with args ${args}`);
         });
 
         socket.on("print", async(...args: any[]) => {
